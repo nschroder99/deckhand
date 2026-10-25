@@ -1,0 +1,17 @@
+{
+  "name": "Deckhand",
+  "short_name": "Deckhand",
+  "description": "Anki-compatible flashcards with sync across devices.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f7f6f3",
+  "theme_color": "#1f4f8f",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ],
+  "file_handlers": [
+    { "action": "./#/import", "accept": { "application/octet-stream": [".apkg", ".colpkg"] } }
+  ]
+}

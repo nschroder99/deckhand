@@ -1,0 +1,134 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Loaded in <iframe sandbox="allow-scripts">: an opaque origin with no access to the app's storage or login.
+     Deck templates often carry their own scripts, so inline scripts are allowed here (and only here). -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval' https:; style-src 'unsafe-inline' https:; img-src data: blob: https:; media-src data: blob: https:; font-src data: https:; connect-src 'none'; frame-src https:; base-uri 'none'; form-action 'none'">
+<style>
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; padding: 20px 16px 40px; overflow-x: hidden; overflow-wrap: break-word; font-family: arial, sans-serif; font-size: 20px; }
+  .card { text-align: center; color: black; background-color: white; }
+  html.night_mode .card, .nightMode.card { color: #ececec; background-color: #2c2c2c; }
+  img { max-width: 100%; height: auto; }
+  .cloze { font-weight: bold; color: blue; }
+  .nightMode .cloze { color: #4c9ef5; }
+  #typeans { width: 100%; box-sizing: border-box; font: inherit; padding: 6px 8px; }
+  code#typeans { display: block; font-family: ui-monospace, Menlo, monospace; white-space: pre-wrap; }
+  .typeGood { background: #afa; color: black; } .typeBad { background: #faa; color: black; } .typeMissed { background: #ccc; color: black; }
+  .replay-button { display: inline-flex; vertical-align: middle; margin: 2px; text-decoration: none; }
+  .replay-button svg { width: 36px; height: 36px; }
+  .replay-button circle { fill: #f0f0f0; stroke: #888; } .replay-button path { fill: #333; }
+  .nightMode .replay-button circle { fill: #444; stroke: #999; } .nightMode .replay-button path { fill: #eee; }
+  a.hint { color: #888; }
+</style>
+<style id="deckcss"></style>
+</head>
+<body class="card">
+<div id="qa"></div>
+<script>
+(() => {
+  const qa = document.getElementById('qa');
+  const send = msg => parent.postMessage(msg, '*');
+  let sounds = [], current = null;
+  const media = {};
+
+  function play(i) {
+    if (current) { current.pause(); current.currentTime = 0; }
+    const src = sounds[i] && media[sounds[i]];
+    if (!src) return;
+    current = new Audio(src);
+    current.play().catch(() => {});
+  }
+  function playAll(list) {
+    let i = 0;
+    const next = () => { if (i >= list.length) return; const src = media[list[i++]]; if (!src) return next(); current = new Audio(src); current.onended = next; current.play().catch(() => {}); };
+    if (current) current.pause();
+    next();
+  }
+
+  const BTN = '<svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="29"/><path d="M56.502,32.301l-37.502,20.101l0.329,-40.804l37.173,20.703Z"/></svg>';
+  function withMedia(html) {
+    sounds = [];
+    html = html.replace(/\[sound:([^\]]+)\]/g, (_, name) => {
+      sounds.push(name);
+      return `<a class="replay-button soundLink" href="#" data-sound="${sounds.length - 1}" aria-label="Play audio">${BTN}</a>`;
+    });
+    const resolve = n => { let k = n; try { k = decodeURIComponent(n); } catch {} return media[k] || media[n]; };
+    html = html.replace(/(<(?:img|audio|video|source)\b[^>]*?\bsrc\s*=\s*)(["']?)([^"' >]+)\2/gi, (m, pre, q, name) => {
+      const url = resolve(name);
+      return url ? `${pre}"${url}"` : m;
+    });
+    return html;
+  }
+  const withCssMedia = css => css.replace(/url\(\s*(["']?)([^"')]+)\1\s*\)/gi, (m, q, name) => (resolve2(name) ? `url("${resolve2(name)}")` : m));
+  const resolve2 = n => { let k = n; try { k = decodeURIComponent(n); } catch {} return media[k] || media[n]; };
+
+  // Anki renders \( … \) and \[ … \] with MathJax. Loaded on first use (needs a connection the first time).
+  let mathjax;
+  function typeset() {
+    mathjax ||= new Promise(res => {
+      window.MathJax = { tex: { inlineMath: [['\\(', '\\)']], displayMath: [['\\[', '\\]']] }, startup: { typeset: false }, chtml: { fontURL: 'https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/output/chtml/fonts/woff-v2' } };
+      const s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-chtml.js';
+      s.onload = () => MathJax.startup.promise.then(res);
+      s.onerror = () => res();
+      document.head.append(s);
+    });
+    mathjax.then(() => window.MathJax?.typesetPromise?.([qa]).catch(() => {}));
+  }
+
+  // Run <script> tags the way Anki's reviewer does: innerHTML doesn't execute them, so re-create each one in order.
+  async function runScripts(root) {
+    for (const old of [...root.querySelectorAll('script')]) {
+      const s = document.createElement('script');
+      for (const a of old.attributes) s.setAttribute(a.name, a.value);
+      if (old.src) await new Promise(res => { s.onload = s.onerror = res; old.replaceWith(s); });
+      else { s.textContent = old.textContent; old.replaceWith(s); }
+    }
+  }
+
+  window.addEventListener('message', async e => {
+    if (e.source !== parent) return;
+    const m = e.data || {};
+    if (m.type === 'show') {
+      Object.assign(media, m.media || {});
+      // Anki adds .mobile on phones; some decks show extra buttons with it.
+      document.documentElement.className = (m.night ? 'night_mode ' : '') + (m.mobile ? 'mobile' : '');
+      document.body.className = `card card${m.ord + 1}` + (m.night ? ' nightMode night_mode' : '');
+      document.getElementById('deckcss').textContent = withCssMedia(m.css || '');
+      qa.innerHTML = withMedia(m.html);
+      await runScripts(qa);
+      if (/\\\(|\\\[/.test(m.html)) typeset();
+      if (m.scrollTop !== false) window.scrollTo(0, m.scrollToAnswer ? (document.getElementById('answer')?.offsetTop || 0) - 10 : 0);
+      if (m.autoplay && sounds.length) playAll(sounds);
+      const input = document.getElementById('typeans');
+      if (input && input.tagName === 'INPUT') {
+        input.focus();
+        input.addEventListener('keydown', ev => { if (ev.key === 'Enter') { ev.preventDefault(); send({ type: 'key', key: 'Enter', fromInput: true }); } });
+      }
+      send({ type: 'shown' });
+    } else if (m.type === 'typed') {
+      const input = document.getElementById('typeans');
+      send({ type: 'typed', value: input && input.value ? input.value : '' });
+    } else if (m.type === 'replay') playAll(sounds);
+  });
+
+  document.addEventListener('click', e => {
+    const a = e.target.closest('.soundLink');
+    if (a) { e.preventDefault(); play(+a.dataset.sound); return; }
+    const link = e.target.closest('a[href]');
+    if (link && /^https?:/i.test(link.getAttribute('href'))) { e.preventDefault(); send({ type: 'open', href: link.href }); return; }
+    if (!e.target.closest('a, button, input, textarea, select, label, summary, [onclick]')) send({ type: 'tap' });
+  });
+  document.addEventListener('keydown', e => {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    send({ type: 'key', key: e.key, code: e.code, ctrl: e.ctrlKey || e.metaKey, shift: e.shiftKey, alt: e.altKey });
+    if (e.key === ' ' || e.key === 'Enter') e.preventDefault();
+  });
+  send({ type: 'ready' });
+})();
+</script>
+</body>
+</html>

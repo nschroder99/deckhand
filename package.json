@@ -1,0 +1,9 @@
+{
+  "name": "deckhand",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "node scripts/check.js",
+    "serve": "python3 -m http.server 8091 --bind 127.0.0.1"
+  }
+}

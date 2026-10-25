@@ -1,6 +1,6 @@
 // Offline: precache the app shell. Card media lives in IndexedDB, not here.
 const PRECACHE = 'precache.json';
-const VERSION = '2026-10-25T19:33:12.488Z'; // rewritten by scripts/check.js so browsers pick up new code
+const VERSION = '2026-10-25T19:45:13.636Z'; // rewritten by scripts/check.js so browsers pick up new code
 const CACHE = 'deckhand-' + VERSION;
 
 self.addEventListener('install', e => {

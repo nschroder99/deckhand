@@ -12,6 +12,7 @@
   "lib/import/apkg.js",
   "lib/import/proto.js",
   "lib/import/worker.js",
+  "lib/import/zip.js",
   "lib/media.js",
   "lib/render.js",
   "lib/search.js",

@@ -31,20 +31,17 @@ new version so installed copies update.
 | `lib/export.js` | Legacy (schema 11) `.apkg` export, readable by every Anki version |
 | `supabase/schema.sql` | Table, last-write-wins trigger, row-level security, media bucket policies |
 
-## Set up sync (one time)
+## Sync setup (done 2026-10-25)
 
-1. In the Supabase dashboard, create a **new project** (free plan) named `deckhand`. Keep it separate from other apps.
-2. **SQL Editor** → paste and run `supabase/schema.sql`.
-3. **Authentication → Sign In / Providers**: Email on. Turn off "Confirm email" if you like; the code sign-in confirms anyway.
-4. **Authentication → Email Templates → Magic Link**: add the code so it can be typed into the installed app
-   (on iPhone a home-screen app can't receive a link), for example:
-   `<p>Your Deckhand code: <b>{{ .Token }}</b></p><p>Or <a href="{{ .ConfirmationURL }}">sign in on this device</a>.</p>`
-5. **Authentication → URL Configuration**: Site URL = where the app is hosted (e.g. `https://nschroder99.github.io/deckhand/`),
-   and add the same URL plus `http://127.0.0.1:8091` under Redirect URLs.
-6. **Project Settings → API**: copy the Project URL and the publishable (anon) key into `config.js`, or paste them in the
-   app under Settings → Sync server on each device.
+Project `deckhand` (`nywhpenpwxykpdcuokua`, us-east-1) on the free plan, separate from other apps.
 
-Supabase's built-in mailer sends only a few emails per hour, which is fine for signing in a handful of devices.
+1. `supabase/schema.sql` was run in the SQL editor.
+2. Sign-in is email + password ("Confirm email" off). Supabase's free plan can't customise its emails, and an emailed
+   link would open Safari rather than the installed iPhone app, so links/codes aren't used.
+3. After the owner's account exists, **Authentication → Sign In / Providers → Allow new users to sign up** is switched
+   off so nobody else can create an account and use the storage quota.
+4. URL Configuration: Site URL `https://nschroder99.github.io/deckhand/`; redirect URLs for that and `http://127.0.0.1:8091`.
+5. `config.js` holds the project URL and publishable key (public by design; row-level security does the protecting).
 
 ### How sync behaves
 

@@ -222,9 +222,12 @@ async function settings() {
           ${s.error ? `<p class="warn">${esc(s.error)}</p>` : ''}
           <div class="row"><button class="btn primary" id="syncNow">Sync now</button><button class="btn" id="prefetch">Download all media</button><button class="btn" id="usage">Check storage use</button><button class="btn" id="signOut">Sign out</button></div>
           <p class="muted small" id="syncMsg" style="margin:0"></p>` :
-        `<p style="margin:0">Sign in with your email to sync this collection across devices.</p>
-          <div class="row"><input class="t" id="email" type="email" placeholder="you@example.com" autocomplete="email" style="flex:1;min-width:200px"><button class="btn primary" id="sendCode">Email me a code</button></div>
-          <div class="row" id="codeRow" hidden><input class="t" id="code" inputmode="numeric" autocomplete="one-time-code" placeholder="6-digit code" style="flex:1;min-width:140px"><button class="btn primary" id="verify">Sign in</button></div>
+        `<p style="margin:0">Sign in to sync this collection across devices.</p>
+          <form id="authForm" class="stack" style="margin:0">
+            <input class="t" id="email" type="email" placeholder="Email" autocomplete="username" required>
+            <input class="t" id="password" type="password" placeholder="Password" autocomplete="current-password" minlength="8" required>
+            <div class="row"><button class="btn primary" type="submit">Sign in</button><button class="btn" type="button" id="signUp">Create account</button></div>
+          </form>
           <p class="muted small" id="syncMsg" style="margin:0"></p>`}
       <details><summary class="small muted" style="cursor:pointer">Sync server</summary>
         <label class="f" for="sbUrl">Supabase project URL</label><input class="t" id="sbUrl" value="${esc(cfg.url)}" placeholder="https://xxxx.supabase.co" autocapitalize="off" spellcheck="false">
@@ -270,17 +273,17 @@ async function settings() {
       msg(`Media on the server: ${fmtBytes(used)} of the free plan's 1 GB.` + (used > 800 * 1048576 ? ' Getting close to the limit.' : ''));
     };
   } else {
-    let email = '';
-    $('#sendCode', app).onclick = async () => {
-      email = $('#email', app).value.trim();
-      if (!email) return;
-      msg('Sending…');
-      try { await sync.sendCode(email); $('#codeRow', app).hidden = false; $('#code', app).focus(); msg(`Check ${email} for a 6-digit code (or tap the link in the email on this device).`); }
-      catch (err) { msg(err.message); }
+    const creds = () => [$('#email', app).value.trim(), $('#password', app).value];
+    $('#authForm', app).onsubmit = async e => {
+      e.preventDefault();
+      msg('Signing in…');
+      try { await sync.signIn(...creds()); toast('Signed in'); settings(); } catch (err) { msg(err.message); }
     };
-    $('#verify', app).onclick = async () => {
-      try { await sync.verifyCode(email, $('#code', app).value); toast('Signed in'); settings(); }
-      catch (err) { msg(err.message); }
+    $('#signUp', app).onclick = async () => {
+      const [email, password] = creds();
+      if (!email || password.length < 8) return msg('Enter your email and a password of at least 8 characters.');
+      msg('Creating account…');
+      try { await sync.signUp(email, password); toast('Account created'); settings(); } catch (err) { msg(err.message); }
     };
   }
 }
